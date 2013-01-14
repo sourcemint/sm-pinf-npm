@@ -1,5 +1,9 @@
 {
 	"name": "pinf",
 	"version": "0.1.0",
-	"main": "./index.js"
+	"main": "./index.js",
+	"dependencies": {
+		"deepmerge": "~0.2.5",
+		"jsonlint": "~1.5.1"
+	}
 }

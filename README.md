@@ -1,7 +1,7 @@
 pinf
 ====
 
-Portable architecture and runtime abstraction for NodeJS applications.
+Portable CommonJS-based architecture and runtime abstraction for NodeJS applications.
 
 Status: ALPHA
 -------------
