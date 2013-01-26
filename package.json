@@ -2,6 +2,8 @@
     "name": "pinf",
     "version": "0.1.2",
     "main": "./index.js",
+    "pm": "npm",
+    "publish": true,
     "dependencies": {
         "deepmerge": "~0.2.5",
         "jsonlint": "~1.5.1"
