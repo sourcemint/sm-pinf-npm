@@ -54,8 +54,16 @@ var PINF = function(module) {
 
 	// TODO: Use `module.parent` and `module.paths` to get config info instead of going up path
 	//		 as path is incorrect when modules are symlinked.
+	var packagePath = null;
+	if (module.dirname) {
+		packagePath = module.dirname;
+	} else
+	if (module.filename) {
+		packagePath = PATH.dirname(module.filename);
+	} else {
+		throw new Error("Cannot determine package path.");
+	}
 
-	var packagePath = PATH.dirname(module.filename);
 	var packageDescriptorPath = findDescriptor(packagePath, "package.json");
 	if (packageDescriptorPath) {
 		var programDescriptorPath = findDescriptor(PATH.dirname(packageDescriptorPath), "program.json");
@@ -66,12 +74,21 @@ var PINF = function(module) {
 				programDescriptor = DEEPMERGE(programDescriptor, devProgramDescriptor);
 			}
 		}
+
+		var ns = ".";
+		if (module.ns && module.ns.config) {
+			ns = module.ns.config;
+		} else {
+			// TODO: If config ns is not set derive it from package uid (package immediately containing module).
+			//		 If package is where program descriptor is found, also look for ".".
+		}
+
 		if (
 			programDescriptor &&
 			programDescriptor.config &&
-			programDescriptor.config["."]
+			programDescriptor.config[ns]
 		) {
-			module.config = programDescriptor.config["."];
+			module.config = programDescriptor.config[ns];
 		}
 	}
 }
