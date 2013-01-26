@@ -13,8 +13,6 @@ exports.for = function(module) {
 var PINF = function(module) {
 	var self = this;
 
-	var packagePath = PATH.dirname(module.filename);
-
 	function loadJSON(path) {
 		if (!PATH.existsSync(path)) return null;
 		try {
@@ -39,22 +37,41 @@ var PINF = function(module) {
 		}
 	}
 
-	var programDescriptor = loadJSON(PATH.join(packagePath, "program.json"));
-
-	if (typeof process.env.SM_WORKSPACE_HOME === "string") {
-		var devProgramDescriptor = loadJSON(PATH.join(packagePath, "program.dev.json"));
-		if (devProgramDescriptor) {
-			programDescriptor = DEEPMERGE(programDescriptor, devProgramDescriptor);
+	function findDescriptor(packagePath, basename) {
+		var descriptorPath = PATH.join(packagePath, basename);
+		while (!PATH.existsSync(descriptorPath)) {
+			var newPath = PATH.join(descriptorPath, "../..", PATH.basename(descriptorPath));
+			if (newPath === descriptorPath) return false;
+			descriptorPath = newPath;
+			if (PATH.existsSync(descriptorPath)) {
+				break;
+			}
 		}
+		return descriptorPath;
 	}
 
-	if (
-		programDescriptor &&
-		programDescriptor.config &&
-		programDescriptor.config["."]
-	) {
-		module.config = programDescriptor.config["."];
-	} else {
-		module.config = {};
+	module.config = {};
+
+	// TODO: Use `module.parent` and `module.paths` to get config info instead of going up path
+	//		 as path is incorrect when modules are symlinked.
+
+	var packagePath = PATH.dirname(module.filename);
+	var packageDescriptorPath = findDescriptor(packagePath, "package.json");
+	if (packageDescriptorPath) {
+		var programDescriptorPath = findDescriptor(PATH.dirname(packageDescriptorPath), "program.json");
+		var programDescriptor = loadJSON(programDescriptorPath);
+		if (typeof process.env.SM_WORKSPACE_HOME === "string") {
+			var devProgramDescriptor = loadJSON(PATH.join(programDescriptorPath, "..", "program.dev.json"));
+			if (devProgramDescriptor) {
+				programDescriptor = DEEPMERGE(programDescriptor, devProgramDescriptor);
+			}
+		}
+		if (
+			programDescriptor &&
+			programDescriptor.config &&
+			programDescriptor.config["."]
+		) {
+			module.config = programDescriptor.config["."];
+		}
 	}
 }
