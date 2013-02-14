@@ -6,6 +6,7 @@
     "publish": true,
     "dependencies": {
         "deepmerge": "~0.2.5",
-        "jsonlint": "~1.5.1"
+        "jsonlint": "~1.5.1",
+        "fs-extra": "~0.3.2"
     }
 }
