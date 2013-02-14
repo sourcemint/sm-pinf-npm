@@ -4,6 +4,7 @@ const PATH = require("path");
 const URL = require("url");
 const FS = require("fs-extra");
 const DEEPMERGE = require("deepmerge");
+// TODO: Make `jsonlint` optional (too many dependencies for what we get).
 const JSONLINT = require("jsonlint");
 
 
