@@ -133,26 +133,37 @@ var PINF = function(module, ns) {
 		}
 	}
 
+	function formatUid(uri) {
+		if (!uri) return false;
+		var parsedUri = URL.parse(uri);
+		if (parsedUri) {
+			uri = ((parsedUri.hostname)?parsedUri.hostname:"") + parsedUri.pathname;
+		}
+		return uri;
+	}
+
 	// Precedence:
 	var descriptor = {};
+	var packageUid = false;
 	//   6) ./package.json
 	loadJSON(packageDescriptorPath, function(obj) {
 		insertNamespace(obj, "config", ".");
 		insertNamespace(obj, "env", ".");
 		descriptor = DEEPMERGE(descriptor, obj);
+		packageUid = formatUid(descriptor.uid);
 	});
 	//   5) /program.json
 	loadJSON(PINF_PROGRAM, function(obj) {
 		descriptor = DEEPMERGE(descriptor, obj);
 	});
 	//   4) ./.package.json
-	loadJSON(packageDescriptorPath.replace(/\/([^\/]*)$/, ".$1"), function(obj) {
+	loadJSON(packageDescriptorPath.replace(/\/([^\/]*)$/, "\/.$1"), function(obj) {
 		insertNamespace(obj, "config", ".");
 		insertNamespace(obj, "env", ".");
 		descriptor = DEEPMERGE(descriptor, obj);
 	});
 	//   3) /.program.json
-	loadJSON(PINF_PROGRAM.replace(/\/([^\/]*)$/, ".$1"), function(obj) {
+	loadJSON(PINF_PROGRAM.replace(/\/([^\/]*)$/, "\/.$1"), function(obj) {
 		descriptor = DEEPMERGE(descriptor, obj);
 	});
 	//   2) /.rt/program.rt.json
@@ -167,15 +178,9 @@ var PINF = function(module, ns) {
 		descriptor = DEEPMERGE(descriptor, obj);
 	});
 
-	module.pinf.uid = module.pinf.uid || descriptor.uid || PATH.dirname(packageDescriptorPath);
-	if (module.pinf.uid) {
-		var uri = URL.parse(module.pinf.uid);
-		if (uri) {
-			module.pinf.uid = ((uri.hostname)?uri.hostname:"") + uri.pathname;
-		}
-	}
+	module.pinf.uid = formatUid(module.pinf.uid || descriptor.uid || PATH.dirname(packageDescriptorPath));
 	module.pinf.ns.filename = module.pinf.ns.filename || exports.uriToFilename(module.pinf.uid + "+" + module.pinf.iid);
-	module.pinf.ns.config = module.pinf.ns.config || module.pinf.uid;
+	module.pinf.ns.config = module.pinf.ns.config || packageUid || ".";
 	module.pinf.ns.env = module.pinf.ns.env || module.pinf.ns.config;
 	module.pinf.main = descriptor.main || false;
 
@@ -207,7 +212,25 @@ var PINF = function(module, ns) {
 	mergePropertyFor("env", module.pinf.uid);
 	//   1) Referenced by `ns.*`.
 	if (ns) {
+		// If `ns` is array, load all namespaces.
+		if (ns.indexOf("/") === -1) {
+			var properties = [
+				"mappings",
+				"optionalMappings",
+				"devMappings"
+			];
+			for (var i=0; i<properties.length ; i++) {
+				if (descriptor[properties[i]][ns] && typeof descriptor[properties[i]][ns] === "string") {
+					var parsedUri = URL.parse("http://" + descriptor[properties[i]][ns]);
+					if (parsedUri.hostname && !/\/$/.test(parsedUri.pathname)) {
+						ns = parsedUri.hostname + PATH.dirname(parsedUri.pathname) + "/";
+						break;
+					}
+				}
+			}
+		}
 		mergePropertyFor("config", ns);
+		mergePropertyFor("config", ns + "0");
 		mergePropertyFor("env", ns);
 	} else {
 		if (module.pinf.ns && module.pinf.ns.config) {
