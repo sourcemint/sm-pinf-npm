@@ -37,6 +37,15 @@ exports.uriToFilename = function(uri) {
 	return exports.uriToPath(uri).replace(/\//g, "+");
 }
 
+exports.formatUid = function(uri) {
+	if (!uri) return false;
+	var parsedUri = URL.parse(uri);
+	if (parsedUri) {
+		uri = ((parsedUri.hostname)?parsedUri.hostname:"") + parsedUri.pathname;
+	}
+	return uri;
+}
+
 
 var PINF = function(options, module, ns) {
 	var self = this;
@@ -199,15 +208,6 @@ var PINF = function(options, module, ns) {
 		}
 	}
 
-	function formatUid(uri) {
-		if (!uri) return false;
-		var parsedUri = URL.parse(uri);
-		if (parsedUri) {
-			uri = ((parsedUri.hostname)?parsedUri.hostname:"") + parsedUri.pathname;
-		}
-		return uri;
-	}
-
 	// Precedence:
 	var descriptor = {};
 	var packageUid = false;
@@ -216,7 +216,7 @@ var PINF = function(options, module, ns) {
 		insertNamespace(obj, "config", ".");
 //		insertNamespace(obj, "env", ".");
 		descriptor = DEEPMERGE(descriptor, obj);
-		packageUid = formatUid(descriptor.uid);
+		packageUid = exports.formatUid(descriptor.uid);
 	});
 	//   5) /program.json
 	loadJSON(self.ENV.PINF_PROGRAM, function(obj) {
@@ -227,7 +227,7 @@ var PINF = function(options, module, ns) {
 		insertNamespace(obj, "config", ".");
 //		insertNamespace(obj, "env", ".");
 		descriptor = DEEPMERGE(descriptor, obj);
-		packageUid = formatUid(descriptor.uid) || packageUid;
+		packageUid = exports.formatUid(descriptor.uid) || packageUid;
 	});
 	//   3) /.program.json
 	loadJSON(self.ENV.PINF_PROGRAM.replace(/\/([^\/]*)$/, "\/.$1"), function(obj) {
@@ -245,7 +245,7 @@ var PINF = function(options, module, ns) {
 		descriptor = DEEPMERGE(descriptor, obj);
 	});
 
-	module.pinf.uid = formatUid(module.pinf.uid || packageUid || PATH.dirname(packageDescriptorPath));
+	module.pinf.uid = exports.formatUid(module.pinf.uid || packageUid || PATH.dirname(packageDescriptorPath));
 	module.pinf.ns.filename = module.pinf.ns.filename || exports.uriToFilename(module.pinf.uid + "+" + module.pinf.iid);
 	module.pinf.ns.config = module.pinf.ns.config || packageUid || ".";
 	module.pinf.ns.env = module.pinf.ns.env || module.pinf.ns.config;
