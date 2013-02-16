@@ -115,13 +115,49 @@ var PINF = function(options, module, ns) {
 		throw new Error("No `package.json` found for path '" + module.pinf.paths.package + "'");
 	}
 
-	function loadJSON(path, onFound) {
+	function loadJSON(path, onFoundCallback) {
 		if (!FS.existsSync(path)) return null;
+		function onFound(obj) {
+			if (obj.extends) {
+				obj.extends.forEach(function(uri) {
+					if (/^\//.test(uri)) {
+						throw new Error("`extends` uri '" + uri + "' may not be an absolute path in '" + path + "'.");
+					}
+					// TODO: Support URLs.
+					var extendsPath = PATH.join(path, ".." , uri);
+					return loadJSON(extendsPath, function(extendsObj) {
+						if (extendsObj) {
+							obj = DEEPMERGE(extendsObj, obj);
+						}
+					});
+				});
+			}
+			return onFoundCallback(obj);
+		}
 		try {
 			var json = FS.readFileSync(path).toString();
 			// Replace environment variables.
             // NOTE: We always replace `$__DIRNAME` with the path to the directory holding the descriptor.
             json = json.replace(/\$__DIRNAME/g, PATH.dirname(path));
+
+			var obj = JSON.parse(json);
+
+			if (!obj) return obj;
+
+			var injectedEnv = null;
+			if (Array.isArray(obj.env) && obj.env[0] === "<-") {
+				// TODO: Support URLs.
+				var injectPath = PATH.join(path, ".." , obj.env[1]);
+				loadJSON(injectPath, function(injectObj) {					
+					injectedEnv = injectObj || false;
+					if (injectedEnv) {
+						for (var name in injectedEnv) {
+							self.ENV[name] = injectedEnv[name];
+						}
+					}
+				});
+			}
+
 			// TODO: Replace by looping through `process.env` rather than the other way around.
 			var m = json.match(/\$([A-Z0-9_]*)/g);
 			if (m) {
@@ -130,7 +166,10 @@ var PINF = function(options, module, ns) {
 					json = json.replace(new RegExp("\\" + name, "g"), self.ENV[name.substring(1)]);
 				});
 			}
-			var obj = JSON.parse(json);
+			obj = JSON.parse(json);
+			if (obj && injectedEnv) {
+				obj.env = injectedEnv;
+			}
 			if (obj && onFound) onFound(obj);
 			return obj;
 		} catch(err) {
@@ -168,7 +207,7 @@ var PINF = function(options, module, ns) {
 	//   6) ./package.json
 	loadJSON(packageDescriptorPath, function(obj) {
 		insertNamespace(obj, "config", ".");
-		insertNamespace(obj, "env", ".");
+//		insertNamespace(obj, "env", ".");
 		descriptor = DEEPMERGE(descriptor, obj);
 		packageUid = formatUid(descriptor.uid);
 	});
@@ -179,7 +218,7 @@ var PINF = function(options, module, ns) {
 	//   4) ./.package.json
 	loadJSON(packageDescriptorPath.replace(/\/([^\/]*)$/, "\/.$1"), function(obj) {
 		insertNamespace(obj, "config", ".");
-		insertNamespace(obj, "env", ".");
+//		insertNamespace(obj, "env", ".");
 		descriptor = DEEPMERGE(descriptor, obj);
 		packageUid = formatUid(descriptor.uid) || packageUid;
 	});
@@ -204,6 +243,7 @@ var PINF = function(options, module, ns) {
 	module.pinf.ns.config = module.pinf.ns.config || packageUid || ".";
 	module.pinf.ns.env = module.pinf.ns.env || module.pinf.ns.config;
 	module.pinf.main = descriptor.main || false;
+	module.pinf.env = self.ENV;
 
 	Object.keys(module.pinf.paths).forEach(function(type) {
 		if (module.pinf.paths[type]) return;
