@@ -130,11 +130,12 @@ var PINF = function(options, module, ns) {
 			if (!obj) return obj;
 
 			var injectedEnv = null;
+			var extending = null;
 			if (Array.isArray(obj.env) && obj.env[0] === "<-") {
 				// TODO: Support URLs.
-				var injectPath = PATH.join(path, ".." , obj.env[1]);
+				var injectPath = PATH.join((FS.realpathSync || PATH.realpathSync)(path), ".." , obj.env[1]);
 				loadJSON(injectPath, function(injectObj) {	
-					obj.env = injectObj || false;
+					obj.env = injectedEnv = injectObj || false;
 				});
 			}
 
@@ -144,9 +145,10 @@ var PINF = function(options, module, ns) {
 						throw new Error("`extends` uri '" + uri + "' may not be an absolute path in '" + path + "'.");
 					}
 					// TODO: Support URLs.
-					var extendsPath = PATH.join(path, ".." , uri);
+					var extendsPath = PATH.join((FS.realpathSync || PATH.realpathSync)(path), ".." , uri);
 					loadJSON(extendsPath, function(extendsObj) {
 						if (extendsObj) {
+							extending = DEEPMERGE(extendsObj, extending || {});
 							obj = DEEPMERGE(extendsObj, obj);
 						}
 					});
@@ -171,6 +173,10 @@ var PINF = function(options, module, ns) {
 			if (obj && injectedEnv) {
 				obj.env = injectedEnv;
 			}
+			if (extending) {
+				obj = DEEPMERGE(extending, obj);
+			}
+
 			if (obj && onFound) onFound(obj);
 			return obj;
 		} catch(err) {
