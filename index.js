@@ -126,8 +126,8 @@ var PINF = function(options, module, ns) {
 			var m = json.match(/\$([A-Z0-9_]*)/g);
 			if (m) {
 				m.forEach(function(name) {
-					ASSERT(typeof ENV[name.substring(1)] === "string", "The '" + name.substring(1) + "' environment variable must be set!")
-					json = json.replace(new RegExp("\\" + name, "g"), ENV[name.substring(1)]);
+					ASSERT(typeof self.ENV[name.substring(1)] === "string", "The '" + name.substring(1) + "' environment variable must be set!")
+					json = json.replace(new RegExp("\\" + name, "g"), self.ENV[name.substring(1)]);
 				});
 			}
 			var obj = JSON.parse(json);
