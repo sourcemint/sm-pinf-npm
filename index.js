@@ -118,20 +118,6 @@ var PINF = function(options, module, ns) {
 	function loadJSON(path, onFoundCallback) {
 		if (!FS.existsSync(path)) return null;
 		function onFound(obj) {
-			if (obj.extends) {
-				obj.extends.forEach(function(uri) {
-					if (/^\//.test(uri)) {
-						throw new Error("`extends` uri '" + uri + "' may not be an absolute path in '" + path + "'.");
-					}
-					// TODO: Support URLs.
-					var extendsPath = PATH.join(path, ".." , uri);
-					return loadJSON(extendsPath, function(extendsObj) {
-						if (extendsObj) {
-							obj = DEEPMERGE(extendsObj, obj);
-						}
-					});
-				});
-			}
 			return onFoundCallback(obj);
 		}
 		try {
@@ -141,21 +127,36 @@ var PINF = function(options, module, ns) {
             json = json.replace(/\$__DIRNAME/g, PATH.dirname(path));
 
 			var obj = JSON.parse(json);
-
 			if (!obj) return obj;
 
 			var injectedEnv = null;
 			if (Array.isArray(obj.env) && obj.env[0] === "<-") {
 				// TODO: Support URLs.
 				var injectPath = PATH.join(path, ".." , obj.env[1]);
-				loadJSON(injectPath, function(injectObj) {					
-					injectedEnv = injectObj || false;
-					if (injectedEnv) {
-						for (var name in injectedEnv) {
-							self.ENV[name] = injectedEnv[name];
-						}
-					}
+				loadJSON(injectPath, function(injectObj) {	
+					obj.env = injectObj || false;
 				});
+			}
+
+			if (obj.extends) {
+				obj.extends.forEach(function(uri) {
+					if (/^\//.test(uri)) {
+						throw new Error("`extends` uri '" + uri + "' may not be an absolute path in '" + path + "'.");
+					}
+					// TODO: Support URLs.
+					var extendsPath = PATH.join(path, ".." , uri);
+					loadJSON(extendsPath, function(extendsObj) {
+						if (extendsObj) {
+							obj = DEEPMERGE(extendsObj, obj);
+						}
+					});
+				});
+			}
+
+			if (obj.env) {
+				for (var name in obj.env) {
+					self.ENV[name] = obj.env[name];
+				}
 			}
 
 			// TODO: Replace by looping through `process.env` rather than the other way around.
