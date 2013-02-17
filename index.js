@@ -50,6 +50,8 @@ exports.formatUid = function(uri) {
 var PINF = function(options, module, ns) {
 	var self = this;
 
+	self.debug = options.debug || false;
+
 	self.ENV = {};
 	for (var name in process.env) {
 		self.ENV[name] = process.env[name];
@@ -125,7 +127,13 @@ var PINF = function(options, module, ns) {
 	}
 
 	function loadJSON(path, onFoundCallback) {
-		if (!FS.existsSync(path)) return null;
+
+		if (self.debug) console.log("[sm] Load JSON from '" + path + "'.");
+
+		if (!FS.existsSync(path)) {
+			if (self.debug) console.log("[sm] WARN: Path '" + path + "' does not exist.");
+			return null;
+		}
 		function onFound(obj) {
 			return onFoundCallback(obj);
 		}
@@ -134,6 +142,7 @@ var PINF = function(options, module, ns) {
 			// Replace environment variables.
             // NOTE: We always replace `$__DIRNAME` with the path to the directory holding the descriptor.
             json = json.replace(/\$__DIRNAME/g, PATH.dirname(path));
+			if (self.debug) console.log("[sm] JSON from '" + path + "': ", json);
 
 			var obj = JSON.parse(json);
 			if (!obj) return obj;
@@ -174,8 +183,16 @@ var PINF = function(options, module, ns) {
 			var m = json.match(/\$([A-Z0-9_]*)/g);
 			if (m) {
 				m.forEach(function(name) {
-					ASSERT(typeof self.ENV[name.substring(1)] === "string", "The '" + name.substring(1) + "' environment variable must be set!")
-					json = json.replace(new RegExp("\\" + name, "g"), self.ENV[name.substring(1)]);
+					if (typeof self.ENV[name.substring(1)] !== "string") {
+						if (options.strict) {
+							console.error("self.ENV", self.ENV);
+							throw new Error("The '" + name.substring(1) + "' environment variable must be set!");
+						} else {
+							// Don't replace. We assume it is not needed otherwise `options.strict`should be set.
+						}
+					} else {
+						json = json.replace(new RegExp("\\" + name, "g"), self.ENV[name.substring(1)]);
+					}
 				});
 			}
 			obj = JSON.parse(json);
