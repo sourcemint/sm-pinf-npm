@@ -50,12 +50,17 @@ exports.formatUid = function(uri) {
 var PINF = function(options, module, ns) {
 	var self = this;
 
+	if (typeof options.strict === "undefined") {
+		options.strict = true;
+	}
+
 	self.debug = options.debug || false;
 
 	self.ENV = {};
 	for (var name in process.env) {
 		self.ENV[name] = process.env[name];
 	}
+	ASSERT(typeof options.PINF_PROGRAM !== "undefined" || typeof options.CWD !== "undefined");
 	// These environment variables declare what to boot and in which state:
 	//   * A local filesystem path to a `program.json` file (how to boot).
 	self.ENV.PINF_PROGRAM = options.PINF_PROGRAM || PATH.join(options.CWD, "program.json");
@@ -81,7 +86,8 @@ var PINF = function(options, module, ns) {
 		ns: {
 			filename: null,
 			config: null,
-			env: null
+			env: null,
+			api: null
 		},
 		paths: {
 			runtime: self.ENV.PINF_RUNTIME,
@@ -90,10 +96,13 @@ var PINF = function(options, module, ns) {
 			data: null,
 			conf: null,
 			log: null,
-			pid: null
+			pid: null,
+			cache: null,
+			tmp: null
 		},
 		env: {},
 		config: {},
+		packages: {},
 		main: false
 	});
 
@@ -175,7 +184,9 @@ var PINF = function(options, module, ns) {
 
 			if (obj.env) {
 				for (var name in obj.env) {
-					self.ENV[name] = obj.env[name];
+					if (("$" + name) !== obj.env[name]) {
+						self.ENV[name] = obj.env[name];
+					}
 				}
 			}
 
@@ -262,12 +273,42 @@ var PINF = function(options, module, ns) {
 		descriptor = DEEPMERGE(descriptor, obj);
 	});
 
-	module.pinf.uid = exports.formatUid(module.pinf.uid || packageUid || PATH.dirname(packageDescriptorPath));
+	module.pinf.uid = exports.formatUid(module.pinf.uid || packageUid) || exports.uriToFilename(PATH.dirname(packageDescriptorPath));
 	module.pinf.ns.filename = module.pinf.ns.filename || exports.uriToFilename(module.pinf.uid + "+" + module.pinf.iid);
 	module.pinf.ns.config = module.pinf.ns.config || packageUid || ".";
 	module.pinf.ns.env = module.pinf.ns.env || module.pinf.ns.config;
+	module.pinf.ns.api = module.pinf.ns.api || module.pinf.ns.config;
 	module.pinf.main = descriptor.main || false;
 	module.pinf.env = self.ENV;
+	[
+		"mappings",
+		"devMappings",
+		"optionalMappings",
+		"dependencies",
+		"devDependencies",
+		"optionalDependencies"
+	].forEach(function(attributeName) {
+		if (!descriptor[attributeName]) return;
+		function detect(name, locator) {
+			if (name === "*" && locator === "*") {
+				module.pinf.packages["*"] = "*";
+			} else {
+				var path = 
+				module.pinf.packages[name] = PATH.join(
+					module.pinf.paths.package,
+					(descriptor.directories && descriptor.directories.packages) || "node_modules",
+					name
+				);
+			}
+		}
+		if (Array.isArray(descriptor[attributeName])) {
+			descriptor[attributeName].forEach(detect);
+		} else {
+			for (var name in descriptor[attributeName]) {
+				detect(name, descriptor[attributeName][name]);
+			}
+		}
+	});
 
 	Object.keys(module.pinf.paths).forEach(function(type) {
 		if (module.pinf.paths[type]) return;
