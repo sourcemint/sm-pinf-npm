@@ -15,6 +15,12 @@ exports.forProgram = function(options) {
 		options = {
 			CWD: options
 		};
+	} else {
+		if (typeof options === "object" && typeof options.filename !== "undefined") {
+			options = {
+				CWD: exports.findDescriptor(PATH.dirname(options.filename), "package.json") || process.cwd()
+			};
+		}
 	}
 	return function(module, ns) {
 		return new PINF(options, module, ns);
@@ -44,6 +50,19 @@ exports.formatUid = function(uri) {
 		uri = ((parsedUri.hostname)?parsedUri.hostname:"") + parsedUri.pathname;
 	}
 	return uri;
+}
+
+exports.findDescriptor = function(packagePath, basename) {
+	var descriptorPath = PATH.join(packagePath, basename);
+	while (!FS.existsSync(descriptorPath)) {
+		var newPath = PATH.join(descriptorPath, "../..", PATH.basename(descriptorPath));
+		if (newPath === descriptorPath) return false;
+		descriptorPath = newPath;
+		if (FS.existsSync(descriptorPath)) {
+			break;
+		}
+	}
+	return descriptorPath;
 }
 
 
@@ -106,19 +125,6 @@ var PINF = function(options, module, ns) {
 		main: false
 	});
 
-	function findDescriptor(packagePath, basename) {
-		var descriptorPath = PATH.join(packagePath, basename);
-		while (!FS.existsSync(descriptorPath)) {
-			var newPath = PATH.join(descriptorPath, "../..", PATH.basename(descriptorPath));
-			if (newPath === descriptorPath) return false;
-			descriptorPath = newPath;
-			if (FS.existsSync(descriptorPath)) {
-				break;
-			}
-		}
-		return descriptorPath;
-	}
-
 	var packagePath = null;
 	if (module.dirname) {
 		packagePath = module.dirname;
@@ -128,12 +134,13 @@ var PINF = function(options, module, ns) {
 	} else {
 		throw new Error("Cannot determine package path.");
 	}
-	module.pinf.paths.package = packagePath;
 
-	var packageDescriptorPath = findDescriptor(module.pinf.paths.package, "package.json");
+	var packageDescriptorPath = exports.findDescriptor(packagePath, "package.json");
 	if (!packageDescriptorPath) {
-		throw new Error("No `package.json` found for path '" + module.pinf.paths.package + "'");
+		throw new Error("No `package.json` found for path '" + packagePath + "'");
 	}
+
+	module.pinf.paths.package = PATH.dirname(packageDescriptorPath);
 
 	function loadJSON(path, onFoundCallback) {
 
