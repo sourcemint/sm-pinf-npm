@@ -168,6 +168,7 @@ var PINF = function(options, module, ns) {
 			if (Array.isArray(obj.env) && obj.env[0] === "<-") {
 				// TODO: Support URLs.
 				var injectPath = PATH.join((FS.realpathSync || PATH.realpathSync)(path), ".." , obj.env[1]);
+				obj.env = injectedEnv = {};
 				loadJSON(injectPath, function(injectObj) {	
 					obj.env = injectedEnv = injectObj || false;
 				});
