@@ -181,11 +181,18 @@ var PINF = function(options, module, ns) {
 
 			if (obj.extends) {
 				obj.extends.forEach(function(uri) {
+					var extendsPath = false;
 					if (/^\//.test(uri)) {
-						throw new Error("`extends` uri '" + uri + "' may not be an absolute path in '" + path + "'.");
+						// We allow absolute extends paths in platform config files (prefixed with `.`).
+						if (/^\./.test(PATH.basename(path))) {
+							extendsPath = uri;
+						} else {
+							throw new Error("`extends` uri '" + uri + "' may not be an absolute path in '" + path + "'.");
+						}
+					} else {
+						extendsPath = PATH.join((FS.realpathSync || PATH.realpathSync)(path), ".." , uri);
 					}
 					// TODO: Support URLs.
-					var extendsPath = PATH.join((FS.realpathSync || PATH.realpathSync)(path), ".." , uri);
 					loadJSON(extendsPath, function(extendsObj) {
 						if (extendsObj) {
 							extending = DEEPMERGE(extendsObj, extending || {});
