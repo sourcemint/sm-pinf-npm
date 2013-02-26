@@ -23,7 +23,12 @@ exports.forProgram = function(options) {
 		}
 	}
 	return function(module, ns) {
-		return new PINF(options, module, ns);
+		try {
+			return new PINF(options, module, ns);
+		} catch(err) {
+			console.error(err.stack);
+			throw err;
+		}
 	};
 }
 
@@ -199,7 +204,7 @@ var PINF = function(options, module, ns) {
 			}
 
 			// TODO: Replace by looping through `process.env` rather than the other way around.
-			var m = json.match(/\$([A-Z0-9_]*)/g);
+			var m = json.match(/\$([A-Z]{1}[A-Z0-9_]*)/g);
 			if (m) {
 				m.forEach(function(name) {
 					if (typeof self.ENV[name.substring(1)] !== "string") {
