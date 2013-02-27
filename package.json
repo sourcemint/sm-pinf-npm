@@ -5,7 +5,7 @@
     "pm": "npm",
     "publish": true,
     "dependencies": {
-        "sm-util": "~0.1.9",
+        "sm-util": "~0.1.10",
         "jsonlint": "~1.5.1",
         "fs-extra": "~0.3.2",
         "mappings": "~0.2.1"
