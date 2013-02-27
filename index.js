@@ -3,7 +3,7 @@ const ASSERT = require("assert");
 const PATH = require("path");
 const URL = require("url");
 const FS = require("fs-extra");
-const DEEPMERGE = require("deepmerge");
+const DEEPMERGE = require("sm-util/lib/util").deepMergeReplaceArrays;
 // TODO: Make `jsonlint` optional (too many dependencies for what we get).
 const JSONLINT = require("jsonlint");
 const MAPPINGS = require("mappings");
@@ -37,7 +37,8 @@ exports.for = exports.forProgram({
 	CWD: process.cwd(),
 	PINF_PROGRAM: process.env.PINF_PROGRAM,
 	PINF_PACKAGE: process.env.PINF_PACKAGE,
-	PINF_MODE: process.env.PINF_MODE
+	PINF_MODE: process.env.PINF_MODE,
+	PINF_PROGRAM_PARENT: process.env.PINF_PROGRAM_PARENT
 });
 
 
@@ -95,6 +96,9 @@ var PINF = function(options, module, ns) {
 	self.ENV.PINF_RUNTIME = PATH.join(self.ENV.PINF_PROGRAM, "../.rt/program.rt.json");
 	//   * The mode the runtime should run it. Will load `program.$PINF_MODE.json`.
 	self.ENV.PINF_MODE = options.PINF_MODE || "production";
+
+	// If `PINF_PROGRAM_PARENT` is set the parent descriptor will be merged on top of our descriptor.
+	self.ENV.PINF_PROGRAM_PARENT = (typeof options.PINF_PROGRAM_PARENT === "string") ? options.PINF_PROGRAM_PARENT : (process.env.PINF_PROGRAM_PARENT || false);
 
 	if (typeof module === "string") {
 		self.module = {
@@ -302,6 +306,13 @@ var PINF = function(options, module, ns) {
 		descriptor = DEEPMERGE(descriptor, obj);
 	});
 
+	if (self.ENV.PINF_PROGRAM_PARENT) {
+		descriptor = DEEPMERGE(descriptor, exports.forProgram({
+			CWD: PATH.dirname(self.ENV.PINF_PROGRAM_PARENT),
+			PINF_PROGRAM_PARENT: ""
+		})(PATH.dirname(self.ENV.PINF_PROGRAM_PARENT))._descriptor);
+	}
+
 	module.pinf.uid = exports.formatUid(module.pinf.uid || packageUid) || exports.uriToFilename(PATH.dirname(packageDescriptorPath));
 	module.pinf.ns.filename = module.pinf.ns.filename || exports.uriToFilename(module.pinf.uid + "+" + module.pinf.iid);
 	module.pinf.ns.config = module.pinf.ns.config || packageUid || ".";
@@ -399,6 +410,7 @@ var PINF = function(options, module, ns) {
 	}
 
 	self._credentials = descriptor.credentials || {};
+	self._descriptor = descriptor;
 }
 
 PINF.prototype.config = function(extra) {
@@ -482,6 +494,26 @@ PINF.prototype.require = function(id, callback) {
 		if (err) return callback(err);
 		return SM.require(id, callback);
 	});
+}
+PINF.prototype.parent = function() {
+	if (typeof process.env.PINF_PROGRAM_PARENT !== "string") return false;
+	if (!this._parent) {
+		this._parent = exports.forProgram(PATH.dirname(process.env.PINF_PROGRAM_PARENT))(PATH.dirname(process.env.PINF_PROGRAM_PARENT));
+	}
+	return this._parent;
+}
+
+PINF.prototype.augmentEnv = function(env, options) {
+	options = options || {};
+	env.PINF_PROGRAM = PATH.join(this.module.pinf.paths.package, "program.json");
+	env.PINF_PACKAGE = PATH.join(this.module.pinf.paths.package, "package.json");
+	env.PINF_RUNTIME = PATH.join(this.module.pinf.paths.package, ".rt/program.rt.json");
+	env.PINF_MODE = options.mode || process.env.PINF_MODE || "production";
+	if (options.inline) {
+		ASSERT(typeof process.env.PINF_PROGRAM === "string", "`PINF_PROGRAM` environment variable must be set when `options.inline` is used");
+		env.PINF_PROGRAM_PARENT = process.env.PINF_PROGRAM;
+	}
+	return env;
 }
 
 PINF.prototype.run = function(program) {
