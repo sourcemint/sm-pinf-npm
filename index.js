@@ -6,6 +6,7 @@ const FS = require("fs-extra");
 const DEEPMERGE = require("deepmerge");
 // TODO: Make `jsonlint` optional (too many dependencies for what we get).
 const JSONLINT = require("jsonlint");
+const MAPPINGS = require("mappings");
 
 
 var instances = {};
@@ -472,6 +473,9 @@ PINF.prototype.resolve = function(id, callback) {
 		if (err) return callback(err);
 		return SM.resolve(id, callback);
 	});
+}
+PINF.prototype.resolveSync = function(id) {
+	return MAPPINGS.for(this.module.pinf.paths.package).resolve(id, silence);
 }
 PINF.prototype.require = function(id, callback) {
 	return sm(this, function(err, SM) {
