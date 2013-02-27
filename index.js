@@ -190,7 +190,15 @@ var PINF = function(options, module, ns) {
 							throw new Error("`extends` uri '" + uri + "' may not be an absolute path in '" + path + "'.");
 						}
 					} else {
-						extendsPath = PATH.join((FS.realpathSync || PATH.realpathSync)(path), ".." , uri);
+						var extendsPath = PATH.join(
+							PATH.dirname(path),
+							(descriptor.directories && descriptor.directories.packages) || "node_modules",
+							uri,
+							PATH.basename(path).replace(".json", ".prototype.json")
+						);
+						if (!FS.existsSync(extendsPath)) {
+							extendsPath = PATH.join((FS.realpathSync || PATH.realpathSync)(path), ".." , uri);
+						}
 					}
 					// TODO: Support URLs.
 					loadJSON(extendsPath, function(extendsObj) {
