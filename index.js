@@ -87,18 +87,17 @@ var PINF = function(options, module, ns) {
 		self.ENV[name] = process.env[name];
 	}
 	ASSERT(typeof options.PINF_PROGRAM !== "undefined" || typeof options.CWD !== "undefined");
+	// If `PINF_PROGRAM_PARENT` is set the parent descriptor will be merged on top of our descriptor.
+	self.ENV.PINF_PROGRAM_PARENT = (typeof options.PINF_PROGRAM_PARENT === "string") ? options.PINF_PROGRAM_PARENT : (process.env.PINF_PROGRAM_PARENT || false);
 	// These environment variables declare what to boot and in which state:
 	//   * A local filesystem path to a `program.json` file (how to boot).
 	self.ENV.PINF_PROGRAM = options.PINF_PROGRAM || PATH.join(options.CWD, "program.json");
 	//   * A local filesystem path to a `package.json` file (what to boot).
 	self.ENV.PINF_PACKAGE = options.PINF_PACKAGE || PATH.join(options.CWD, "package.json");
 	//   * A local filesystem path to a `program.rt.json` file (the state to boot in).
-	self.ENV.PINF_RUNTIME = PATH.join(self.ENV.PINF_PROGRAM, "../.rt/program.rt.json");
+	self.ENV.PINF_RUNTIME = PATH.join(self.ENV.PINF_PROGRAM_PARENT || self.ENV.PINF_PROGRAM, "../.rt/program.rt.json");
 	//   * The mode the runtime should run it. Will load `program.$PINF_MODE.json`.
 	self.ENV.PINF_MODE = options.PINF_MODE || "production";
-
-	// If `PINF_PROGRAM_PARENT` is set the parent descriptor will be merged on top of our descriptor.
-	self.ENV.PINF_PROGRAM_PARENT = (typeof options.PINF_PROGRAM_PARENT === "string") ? options.PINF_PROGRAM_PARENT : (process.env.PINF_PROGRAM_PARENT || false);
 
 	if (typeof module === "string") {
 		self.module = {
