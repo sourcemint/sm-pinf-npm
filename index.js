@@ -508,6 +508,16 @@ PINF.prototype.augmentEnv = function(env, options) {
 	env.PINF_PACKAGE = PATH.join(this.module.pinf.paths.package, "package.json");
 	env.PINF_RUNTIME = PATH.join(this.module.pinf.paths.package, ".rt/program.rt.json");
 	env.PINF_MODE = options.mode || process.env.PINF_MODE || "production";
+	if (typeof options.verbose !== "undefined") {
+		env.PINF_VERBOSE = options.verbose ? "*" : "";
+	} else {
+		env.PINF_VERBOSE = process.env.PINF_VERBOSE || "";
+	}
+	if (typeof options.debug !== "undefined") {
+		env.PINF_DEBUG = options.debug ? "*" : "";
+	} else {
+		env.PINF_DEBUG = process.env.PINF_DEBUG || "";
+	}
 	if (options.inline) {
 		ASSERT(typeof process.env.PINF_PROGRAM === "string", "`PINF_PROGRAM` environment variable must be set when `options.inline` is used");
 		env.PINF_PROGRAM_PARENT = process.env.PINF_PROGRAM;
