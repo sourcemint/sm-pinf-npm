@@ -480,7 +480,7 @@ PINF.prototype.singleton = function(config, constructor, callback) {
 }
 
 PINF.prototype.resolve = function(id, callback) {
-	return sm(this, function(err, SM) {
+	return this.sm(function(err, SM) {
 		if (err) return callback(err);
 		return SM.resolve(id, callback);
 	});
@@ -489,10 +489,13 @@ PINF.prototype.resolveSync = function(id) {
 	return MAPPINGS.for(this.module.pinf.paths.package).resolve(id, silence);
 }
 PINF.prototype.require = function(id, callback) {
-	return sm(this, function(err, SM) {
+	return this.sm(function(err, SM) {
 		if (err) return callback(err);
 		return SM.require(id, callback);
 	});
+}
+PINF.prototype.sm = function(callback) {
+	return sm(this, callback);
 }
 PINF.prototype.parent = function() {
 	if (typeof process.env.PINF_PROGRAM_PARENT !== "string") return false;
