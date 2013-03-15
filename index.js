@@ -332,12 +332,21 @@ var PINF = function(options, module, ns) {
 			if (name === "*" && locator === "*") {
 				module.pinf.packages["*"] = "*";
 			} else {
-				var path = 
-				module.pinf.packages[name] = PATH.join(
-					module.pinf.paths.package,
-					(descriptor.directories && descriptor.directories.packages) || "node_modules",
-					name
-				);
+				module.pinf.packages[name] = {
+					path: PATH.join(
+						module.pinf.paths.package,
+						(descriptor.directories && descriptor.directories.packages) || "node_modules",
+						name
+					),
+					archive: false
+				};
+				if (self.ENV.SM_HOME && (FS.existsSync || PATH.existsSync)(PATH.join(module.pinf.packages[name].path, ".sm/source.json"))) {
+					try {
+						var json = JSON.parse(FS.readFileSync(PATH.join(module.pinf.packages[name].path, ".sm/source.json")));
+						// TODO: Lookup sm config to determine cache path.
+						module.pinf.packages[name].archive = PATH.join(self.ENV.SM_HOME, "cache/external", exports.uriToPath(json.locator.pointer));
+					} catch(err) {}
+				}
 			}
 		}
 		if (Array.isArray(descriptor[attributeName])) {
