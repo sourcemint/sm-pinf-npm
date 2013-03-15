@@ -1,6 +1,6 @@
 {
     "name": "pinf",
-    "version": "0.2.15",
+    "version": "0.2.16",
     "main": "./index.js",
     "pm": "npm",
     "publish": true,
