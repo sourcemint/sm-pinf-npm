@@ -1,4 +1,5 @@
 {
+    "uid": "https://github.com/sourcemint/sm-pinf-npm/",
     "name": "pinf",
     "version": "0.2.16",
     "main": "./index.js",
