@@ -2,7 +2,7 @@
 const ASSERT = require("assert");
 const PATH = require("path");
 const URL = require("url");
-const FS = require("fs-extra");
+const FS = require("sm-util/lib/fs");
 const DEEPMERGE = require("sm-util/lib/util").deepMergeReplaceArrays;
 // TODO: Make `jsonlint` optional (too many dependencies for what we get).
 const JSONLINT = require("jsonlint");
